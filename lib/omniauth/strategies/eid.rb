@@ -3,7 +3,7 @@ require 'ruby-saml'
 
 module OmniAuth
   module Strategies
-    class SAML
+    class EID
       include OmniAuth::Strategy
 
       option :name_identifier_format, nil
@@ -34,6 +34,7 @@ module OmniAuth
 
         @name_id = response.name_id
         @attributes = response.attributes
+        @fed_id = @attributes["urn:be:fedict:iam:attr:fedid"]
 
         if @name_id.nil? || @name_id.empty?
           raise OmniAuth::Strategies::SAML::ValidationError.new("SAML response missing 'name_id'")
@@ -62,7 +63,7 @@ module OmniAuth
         end
       end
 
-      uid { @name_id }
+      uid { @fed_id }
 
       info do
         {
@@ -78,4 +79,4 @@ module OmniAuth
   end
 end
 
-OmniAuth.config.add_camelization 'saml', 'SAML'
+OmniAuth.config.add_camelization 'eid', 'EID'
