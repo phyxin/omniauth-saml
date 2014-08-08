@@ -37,13 +37,17 @@ module OmniAuth
         @fed_id = @attributes["urn:be:fedict:iam:attr:fedid"]
 
         if @name_id.nil? || @name_id.empty?
-          raise OmniAuth::Strategies::SAML::ValidationError.new("SAML response missing 'name_id'")
+          raise OmniAuth::Strategies::EID::ValidationError.new("SAML response missing 'name_id'")
+        end
+
+        if @fed_id.nil? || @fed_id.empty?
+          raise OmniAuth::Strategies::EID::ValidationError.new("SAML response missing 'urn:be:fedict:iam:attr:fedid'")
         end
 
         response.validate!
 
         super
-      rescue OmniAuth::Strategies::SAML::ValidationError
+      rescue OmniAuth::Strategies::EID::ValidationError
         fail!(:invalid_ticket, $!)
       rescue Onelogin::Saml::ValidationError
         fail!(:invalid_ticket, $!)
