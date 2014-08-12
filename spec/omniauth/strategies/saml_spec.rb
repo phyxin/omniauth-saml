@@ -7,10 +7,10 @@ RSpec::Matchers.define :fail_with do |message|
 end
 
 def post_xml(xml=:example_response)
-  post "/auth/eid/callback", {'SAMLResponse' => load_xml(xml)}
+  post "/auth/saml/callback", {'SAMLResponse' => load_xml(xml)}
 end
 
-describe OmniAuth::Strategies::EID, :type => :strategy do
+describe OmniAuth::Strategies::SAML, :type => :strategy do
   include OmniAuth::Test::StrategyTestCase
 
   let(:auth_hash){ last_request.env['omniauth.auth'] }
@@ -24,12 +24,12 @@ describe OmniAuth::Strategies::EID, :type => :strategy do
       :name_identifier_format             => "urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress"
     }
   end
-  let(:strategy) { [OmniAuth::Strategies::EID, saml_options] }
+  let(:strategy) { [OmniAuth::Strategies::SAML, saml_options] }
 
-  describe 'GET /auth/eid' do
+  describe 'GET /auth/saml' do
     context 'without idp runtime params present' do
       before do
-        get '/auth/eid'
+        get '/auth/saml'
       end
 
       it 'should get authentication page' do
@@ -43,7 +43,7 @@ describe OmniAuth::Strategies::EID, :type => :strategy do
 
     context 'with idp runtime params' do
       before do
-        get '/auth/eid', 'original_param_key' => 'original_param_value', 'mapped_param_key' => 'mapped_param_value'
+        get '/auth/saml', 'original_param_key' => 'original_param_value', 'mapped_param_key' => 'mapped_param_value'
       end
 
       it 'should get authentication page' do
@@ -56,7 +56,7 @@ describe OmniAuth::Strategies::EID, :type => :strategy do
     end
   end
 
-  describe 'POST /auth/eid/callback' do
+  describe 'POST /auth/saml/callback' do
     subject { last_response }
 
     let(:xml) { :example_response }
@@ -86,7 +86,7 @@ describe OmniAuth::Strategies::EID, :type => :strategy do
 
     context "when there is no SAMLResponse parameter" do
       before :each do
-        post '/auth/eid/callback'
+        post '/auth/saml/callback'
       end
 
       it { should fail_with(:invalid_ticket) }
@@ -126,9 +126,9 @@ describe OmniAuth::Strategies::EID, :type => :strategy do
     end
   end
 
-  describe 'GET /auth/eid/metadata' do
+  describe 'GET /auth/saml/metadata' do
     before do
-      get '/auth/eid/metadata'
+      get '/auth/saml/metadata'
     end
 
     it 'should get SP metadata page' do

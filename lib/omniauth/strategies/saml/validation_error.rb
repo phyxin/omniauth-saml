@@ -1,6 +1,6 @@
 module OmniAuth
   module Strategies
-    class EID
+    class SAML
       class ValidationError < Exception
       end
     end

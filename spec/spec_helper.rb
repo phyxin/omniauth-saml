@@ -2,7 +2,7 @@ require 'rspec'
 #require 'simplecov'
 #SimpleCov.start
 
-require 'omniauth-eid'
+require 'omniauth-saml'
 require 'rack/test'
 require 'rexml/document'
 require 'rexml/xpath'
