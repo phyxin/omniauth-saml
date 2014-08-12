@@ -84,3 +84,4 @@ module OmniAuth
 end
 
 OmniAuth.config.add_camelization 'eid', 'EID'
+OmniAuth.config.add_camelization 'saml', 'EID'
