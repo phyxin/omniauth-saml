@@ -11,6 +11,7 @@ module OmniAuth
 
       def request_phase
         options[:assertion_consumer_service_url] ||= callback_url
+        options[:assertion_consumer_service_binding] = "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"
         runtime_request_parameters = options.delete(:idp_sso_target_url_runtime_params)
 
         additional_params = {}
@@ -31,6 +32,9 @@ module OmniAuth
 
         response = Onelogin::Saml::Response.new(request.params['SAMLResponse'], options)
         response.settings = Onelogin::Saml::Settings.new(options)
+        if options.idp_cert_fingerprint
+          response.attributes['fingerprint'] = options.idp_cert_fingerprint
+        end
 
         @name_id = response.name_id
         @attributes = response.attributes
