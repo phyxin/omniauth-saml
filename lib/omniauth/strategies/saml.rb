@@ -8,10 +8,11 @@ module OmniAuth
 
       option :name_identifier_format, nil
       option :idp_sso_target_url_runtime_params, {}
+      option :assertion_consumer_service_binding, "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"
 
       def request_phase
         options[:assertion_consumer_service_url] ||= callback_url
-        options[:assertion_consumer_service_binding] = "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"
+        options[:assertion_consumer_service_binding] ||= "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"
         runtime_request_parameters = options.delete(:idp_sso_target_url_runtime_params)
 
         additional_params = {}
