@@ -22,6 +22,7 @@ use OmniAuth::Strategies::SAML,
   :idp_sso_target_url_runtime_params  => {:original_request_param => :mapped_idp_param},
   :idp_cert                           => "-----BEGIN CERTIFICATE-----\n...-----END CERTIFICATE-----",
   :idp_cert_fingerprint               => "E7:91:B2:E1:...",
+  :idp_cert_fingerprint_validator     => lambda { |fingerprint| fingerprint },
   :name_identifier_format             => "urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress"
 ```
 
@@ -44,6 +45,7 @@ Rails.application.config.middleware.use OmniAuth::Builder do
     :idp_sso_target_url_runtime_params  => {:original_request_param => :mapped_idp_param},
     :idp_cert                           => "-----BEGIN CERTIFICATE-----\n...-----END CERTIFICATE-----",
     :idp_cert_fingerprint               => "E7:91:B2:E1:...",
+    :idp_cert_fingerprint_validator     => lambda { |fingerprint| fingerprint },
     :name_identifier_format             => "urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress"
 end
 ```
@@ -73,12 +75,16 @@ The service provider metadata used to ease configuration of the SAML SP in the I
   `original_param_value`. Optional.
 
 * `:idp_cert` - The identity provider's certificate in PEM format. Takes precedence
-  over the fingerprint option below. This option or `:idp_cert_fingerprint` must
+  over the fingerprint option below. This option or `:idp_cert_fingerprint` or `:idp_cert_fingerprint_validator` must
   be present.
 
 * `:idp_cert_fingerprint` - The SHA1 fingerprint of the certificate, e.g.
   "90:CC:16:F0:8D:...". This is provided from the identity provider when setting up
-  the relationship. This option or `:idp_cert` must be present.
+  the relationship. This option or `:idp_cert` or `:idp_cert_fingerprint_validator` MUST be present.
+
+* `:idp_cert_fingerprint_validator` - A lambda that MUST accept one parameter
+  (the fingerprint), verify if it is valid and return it if successful. This option
+  or `:idp_cert` or `:idp_cert_fingerprint` MUST be present.
 
 * `:name_identifier_format` - Used during SP-initiated SSO. Describes the format of
   the username required by this application. If you need the email address, use
@@ -88,11 +94,33 @@ The service provider metadata used to ease configuration of the SAML SP in the I
   If not specified, the IdP is free to choose the name identifier format used
   in the response. Optional.
 
-* See the `Onelogin::Saml::Settings` class in the [Ruby SAML gem](https://github.com/onelogin/ruby-saml) for additional supported options.
+* `:request_attributes` - Used to build the metadata file to inform the IdP to send certain attributes
+  along with the SAMLResponse messages. Defaults to requesting `name`, `first_name`, `last_name` and `email`
+  attributes. See the `OneLogin::RubySaml::AttributeService` class in the [Ruby SAML gem](https://github.com/onelogin/ruby-saml) for the available options for each attribute. Set to `{}` to disable this from metadata.
+
+* `:attribute_service_name` - Name for the attribute service. Defaults to `Required attributes`.
+
+* See the `OneLogin::RubySaml::Settings` class in the [Ruby SAML gem](https://github.com/onelogin/ruby-saml) for additional supported options.
+
+## Devise Integration
+
+Straightforward integration with [Devise](https://github.com/plataformatec/devise), the widely-used authentication solution for Rails.
+
+In `config/initializers/devise.rb`:
+
+```ruby
+Devise.setup do |config|
+  config.omniauth :saml,
+    idp_cert_fingerprint: 'fingerprint',
+    idp_sso_target_url: 'target_url'
+end
+```
+
+Then follow Devise's general [OmniAuth tutorial](https://github.com/plataformatec/devise/wiki/OmniAuth:-Overview), replacing references to `facebook` with `saml`.
 
 ## Authors
 
-Authored by [Rajiv Aaron Manglani](http://www.rajivmanglani.com/), Raecoo Cao, Todd W Saxton, Ryan Wilcox, Steven Anderson, Nikos Dimitrakopoulos, and Rudolf Vriend.
+Authored by [Rajiv Aaron Manglani](http://www.rajivmanglani.com/), Raecoo Cao, Todd W Saxton, Ryan Wilcox, Steven Anderson, Nikos Dimitrakopoulos, Rudolf Vriend and [Bruno Pedro](http://brunopedro.com/).
 
 ## License
 

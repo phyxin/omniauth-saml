@@ -17,11 +17,17 @@ describe OmniAuth::Strategies::SAML, :type => :strategy do
   let(:saml_options) do
     {
       :assertion_consumer_service_url     => "http://localhost:3000/auth/saml/callback",
-      :issuer                             => "https://saml.issuer.url/issuers/29490",
       :idp_sso_target_url                 => "https://idp.sso.target_url/signon/29490",
       :idp_cert_fingerprint               => "C1:59:74:2B:E8:0C:6C:A9:41:0F:6E:83:F6:D1:52:25:45:58:89:FB",
       :idp_sso_target_url_runtime_params  => {:original_param_key => :mapped_param_key},
-      :name_identifier_format             => "urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress"
+      :name_identifier_format             => "urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress",
+      :request_attributes                 => [
+        { name: 'email', name_format: 'urn:oasis:names:tc:SAML:2.0:attrname-format:basic', friendly_name: 'Email address' },
+        { name: 'name', name_format: 'urn:oasis:names:tc:SAML:2.0:attrname-format:basic', friendly_name: 'Full name' },
+        { name: 'first_name', name_format: 'urn:oasis:names:tc:SAML:2.0:attrname-format:basic', friendly_name: 'Given name' },
+        { name: 'last_name', name_format: 'urn:oasis:names:tc:SAML:2.0:attrname-format:basic', friendly_name: 'Family name' }
+      ],
+      :attribute_service_name             => 'Required attributes'
     }
   end
   let(:strategy) { [OmniAuth::Strategies::SAML, saml_options] }
@@ -75,11 +81,34 @@ describe OmniAuth::Strategies::SAML, :type => :strategy do
       end
 
       it "should set the raw info to all attributes" do
-        auth_hash['extra']['raw_info'].to_hash.should == {
-          'first_name'   => 'Rajiv',
-          'last_name'    => 'Manglani',
-          'email'        => 'user@example.com',
-          'company_name' => 'Example Company'
+        auth_hash['extra']['raw_info'].all.to_hash.should == {
+          'first_name'   => ['Rajiv'],
+          'last_name'    => ['Manglani'],
+          'email'        => ['user@example.com'],
+          'company_name' => ['Example Company'],
+          'fingerprint'  => saml_options[:idp_cert_fingerprint]
+        }
+      end
+    end
+
+    context "when fingerprint is empty and there's a fingerprint validator" do
+      before :each do
+        saml_options.delete(:idp_cert_fingerprint)
+        saml_options[:idp_cert_fingerprint_validator] = lambda { |fingerprint| "C1:59:74:2B:E8:0C:6C:A9:41:0F:6E:83:F6:D1:52:25:45:58:89:FB" }
+        post_xml
+      end
+
+      it "should set the uid to the nameID in the SAML response" do
+        auth_hash['uid'].should == '_1f6fcf6be5e13b08b1e3610e7ff59f205fbd814f23'
+      end
+
+      it "should set the raw info to all attributes" do
+        auth_hash['extra']['raw_info'].all.to_hash.should == {
+          'first_name'   => ['Rajiv'],
+          'last_name'    => ['Manglani'],
+          'email'        => ['user@example.com'],
+          'company_name' => ['Example Company'],
+          'fingerprint'  => 'C1:59:74:2B:E8:0C:6C:A9:41:0F:6E:83:F6:D1:52:25:45:58:89:FB'
         }
       end
     end
@@ -134,6 +163,13 @@ describe OmniAuth::Strategies::SAML, :type => :strategy do
     it 'should get SP metadata page' do
       last_response.status.should == 200
       last_response.header["Content-Type"].should == "application/xml"
+    end
+
+    it 'should configure attributes consuming service' do
+      last_response.body.should match /AttributeConsumingService/
+      last_response.body.should match /first_name/
+      last_response.body.should match /last_name/
+      last_response.body.should match /Required attributes/
     end
   end
 end

@@ -8,11 +8,10 @@ module OmniAuth
 
       option :name_identifier_format, nil
       option :idp_sso_target_url_runtime_params, {}
-      option :assertion_consumer_service_binding, "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"
+      option :request_attributes, {}
 
       def request_phase
         options[:assertion_consumer_service_url] ||= callback_url
-        options[:assertion_consumer_service_binding] ||= "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"
         runtime_request_parameters = options.delete(:idp_sso_target_url_runtime_params)
 
         additional_params = {}
@@ -20,8 +19,8 @@ module OmniAuth
           additional_params[mapped_param_key] = request.params[request_param_key.to_s] if request.params.has_key?(request_param_key.to_s)
         end if runtime_request_parameters
 
-        authn_request = Onelogin::Saml::Authrequest.new
-        settings = Onelogin::Saml::Settings.new(options)
+        authn_request = OneLogin::RubySaml::Authrequest.new
+        settings = OneLogin::RubySaml::Settings.new(options)
 
         redirect(authn_request.create(settings, additional_params))
       end
@@ -31,11 +30,19 @@ module OmniAuth
           raise OmniAuth::Strategies::SAML::ValidationError.new("SAML response missing")
         end
 
-        response = Onelogin::Saml::Response.new(request.params['SAMLResponse'], options)
-        response.settings = Onelogin::Saml::Settings.new(options)
-        if options.idp_cert_fingerprint
-          response.attributes['fingerprint'] = options.idp_cert_fingerprint
+        # Call a fingerprint validation method if there's one
+        if options.idp_cert_fingerprint_validator
+          fingerprint_exists = options.idp_cert_fingerprint_validator[response_fingerprint]
+          unless fingerprint_exists
+            raise OmniAuth::Strategies::SAML::ValidationError.new("Non-existent fingerprint")
+          end
+          # id_cert_fingerprint becomes the given fingerprint if it exists
+          options.idp_cert_fingerprint = fingerprint_exists
         end
+
+        response = OneLogin::RubySaml::Response.new(request.params['SAMLResponse'], options)
+        response.settings = OneLogin::RubySaml::Settings.new(options)
+        response.attributes['fingerprint'] = options.idp_cert_fingerprint
 
         @name_id = response.name_id
         @attributes = response.attributes
@@ -49,13 +56,27 @@ module OmniAuth
           raise OmniAuth::Strategies::SAML::ValidationError.new("SAML response missing 'urn:be:fedict:iam:attr:fedid'")
         end
 
-        response.validate!
+        # will raise an error since we are not in soft mode
+        response.soft = false
+        response.is_valid?
 
         super
       rescue OmniAuth::Strategies::SAML::ValidationError
         fail!(:invalid_ticket, $!)
-      rescue Onelogin::Saml::ValidationError
+      rescue OneLogin::RubySaml::ValidationError
         fail!(:invalid_ticket, $!)
+      end
+
+      # Obtain an idp certificate fingerprint from the response.
+      def response_fingerprint
+        response = request.params['SAMLResponse']
+        response = (response =~ /^</) ? response : Base64.decode64(response)
+        document = XMLSecurity::SignedDocument::new(response)
+        cert_element = REXML::XPath.first(document, "//ds:X509Certificate", { "ds"=> 'http://www.w3.org/2000/09/xmldsig#' })
+        base64_cert = cert_element.text
+        cert_text = Base64.decode64(base64_cert)
+        cert = OpenSSL::X509::Certificate.new(cert_text)
+        Digest::SHA1.hexdigest(cert.to_der).upcase.scan(/../).join(':')
       end
 
       def other_phase
@@ -64,8 +85,14 @@ module OmniAuth
           @env['omniauth.strategy'] ||= self
           setup_phase
 
-          response = Onelogin::Saml::Metadata.new
-          settings = Onelogin::Saml::Settings.new(options)
+          response = OneLogin::RubySaml::Metadata.new
+          settings = OneLogin::RubySaml::Settings.new(options)
+          if options.request_attributes.length > 0
+            settings.attribute_consuming_service.service_name options.attribute_service_name
+            options.request_attributes.each do |attribute|
+              settings.attribute_consuming_service.add_attribute attribute
+            end
+          end
           Rack::Response.new(response.generate(settings), 200, { "Content-Type" => "application/xml" }).finish
         else
           call_app!
@@ -89,3 +116,4 @@ module OmniAuth
 end
 
 OmniAuth.config.add_camelization 'saml', 'SAML'
+

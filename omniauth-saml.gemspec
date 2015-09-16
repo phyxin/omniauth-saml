@@ -7,12 +7,12 @@ Gem::Specification.new do |gem|
   gem.description   = 'A generic SAML strategy for OmniAuth.'
   gem.license       = 'MIT'
 
-  gem.authors       = ['Raecoo Cao', 'Ryan Wilcox', 'Rajiv Aaron Manglani', 'Steven Anderson', 'Nikos Dimitrakopoulos', 'Rudolf Vriend', 'Gigamo']
+  gem.authors       = ['Raecoo Cao', 'Ryan Wilcox', 'Rajiv Aaron Manglani', 'Steven Anderson', 'Nikos Dimitrakopoulos', 'Rudolf Vriend', 'Bruno Pedro']
   gem.email         = 'rajiv@alum.mit.edu'
   gem.homepage      = 'https://github.com/tickle/omniauth-saml'
 
-  gem.add_runtime_dependency 'omniauth', '~> 1.2'
-  gem.add_runtime_dependency 'ruby-saml', '~> 0.7.3'
+  gem.add_runtime_dependency 'omniauth', '~> 1.1'
+  gem.add_runtime_dependency 'ruby-saml', '~> 1.0.0'
 
   gem.add_development_dependency 'rspec', '~> 2.8'
   gem.add_development_dependency 'simplecov', '~> 0.6'
